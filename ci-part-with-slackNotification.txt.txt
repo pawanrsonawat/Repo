@@ -1,6 +1,6 @@
 def COLOR_MAP = [
-    'SUCCESS': 'good', 
-    'FAILURE': 'danger',
+    'SUCCESS': 'good',     # this is to test show the red and green colour in Slack at line 106 
+    'FAILURE': 'danger',    # this is to test show the red and green colour in Slack at line 106 
 ]
 pipeline {
 	agent any
@@ -11,12 +11,12 @@ pipeline {
 
 	stages {
 
-		stage('test slack'){
-			steps{
-				sh 'NotARealCommand'
-
-			}
-		}
+#		stage('test slack'){                         # this stage to show to red colour in slack to test the error in ci
+#			steps{
+#				sh 'NotARealCommand'
+#
+#			}
+#		}
 	    stage('Fetch code') {
             steps {
                git branch: 'atom', url: 'https://github.com/hkhcoder/vprofile-project.git'
@@ -107,5 +107,6 @@ pipeline {
                 message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
         }
     }
+
 
 }
