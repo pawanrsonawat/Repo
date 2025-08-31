@@ -1,0 +1,83 @@
+---
+- name: Register RHEL server with Satellite and Patch
+  hosts: all
+  become: yes
+  vars:
+    satellite_org: "YourOrgABC"
+    activation_key: "your-activation-key"
+    satellite_url: "https://satellite.example.com"
+    app_team_email: "appteam@ABC.com"
+    smtp_host: "smtp.example.com"
+
+  pre_tasks:
+    - name: Send email to App Team before patching
+      mail:
+        host: "{{ smtp_host }}"
+        port: 25
+        subject: "Patching Activity Notification"
+        to: "{{ app_team_email }}"
+        from: "patching-automation@ABC.com"
+        body: |
+          Dear App Team,
+
+          Please be informed that patching will start now for all servers in the inventory.
+          Servers will be rebooted if required. Services will be restored after reboot.
+
+          Regards,
+          Infra Team
+
+    - name: Register the system with Satellite                          # we can ragister it with Email id and pass as well 
+      redhat_subscription:                                              # we can ragister it with ragister link as well from 
+        state: present
+        activationkey: "{{ activation_key }}"
+        org_id: "{{ satellite_org }}"
+        server_hostname: "{{ satellite_url }}"
+        auto_attach: true
+
+    - name: Ensure system is registered
+      command: subscription-manager status
+      register: sub_status
+      changed_when: false
+
+  tasks:
+    - name: Capture list of running services before reboot
+      shell: "systemctl list-units --type=service --state=running --no-pager --no-legend | awk '{print $1}'"
+      register: running_services
+      changed_when: false
+
+    - name: Apply latest patches             
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Reboot the server
+      reboot:
+        msg: "Reboot initiated by Ansible after patching"
+        connect_timeout: 5
+        reboot_timeout: 1200
+        pre_reboot_delay: 10
+        post_reboot_delay: 30
+        test_command: whoami
+
+    - name: Restore previously running services
+      service:
+        name: "{{ item }}"
+        state: started
+      loop: "{{ running_services.stdout_lines }}"
+
+  post_tasks:
+    - name: Send email to App Team after patching
+      mail:
+        host: "{{ smtp_host }}"
+        port: 25
+        subject: "Patching Completed Successfully"
+        to: "{{ app_team_email }}"
+        from: "patching-automation@ABC.com"
+        body: |
+          Dear App Team,
+
+          Patching activity has been completed successfully.
+          All services have been restored. Kindly validate from your end.
+
+          Regards,
+          Infra Team
